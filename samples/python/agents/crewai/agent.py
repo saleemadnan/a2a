@@ -21,12 +21,16 @@ from crewai.tools import tool
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+
+def get_api_key() -> str | None:
+    """Load and return the Google API key from environment variables."""
+    load_dotenv()
+    return os.getenv('GOOGLE_API_KEY')
 
 
 class Imagedata(BaseModel):
@@ -40,9 +44,11 @@ class Imagedata(BaseModel):
       error: Error message if there was an issue with the image.
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str | None = None
     name: str | None = None
-    mime_type: str | None = None
+    mime_type: str | None = Field(default=None, alias='mimeType')
     bytes: str | None = None
     error: str | None = None
 
@@ -55,7 +61,7 @@ def generate_image_tool(
     if not prompt:
         raise ValueError('Prompt cannot be empty')
 
-    client = genai.Client()
+    client = genai.Client(api_key=get_api_key())
     cache = InMemoryCache()
 
     text_input = (
@@ -99,7 +105,7 @@ def generate_image_tool(
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
+            model='gemini-2.0-flash-exp-image-generation',
             contents=contents,
             config=types.GenerateContentConfig(
                 response_modalities=['Text', 'Image']
@@ -142,12 +148,13 @@ class ImageGenerationAgent:
     SUPPORTED_CONTENT_TYPES = ['text', 'text/plain', 'image/png']
 
     def __init__(self):
+        api_key = get_api_key()
         if os.getenv('GOOGLE_GENAI_USE_VERTEXAI'):
             self.model = LLM(model='vertex_ai/gemini-2.0-flash')
-        elif os.getenv('GOOGLE_API_KEY'):
+        else:
             self.model = LLM(
                 model='gemini/gemini-2.0-flash',
-                api_key=os.getenv('GOOGLE_API_KEY'),
+                api_key=api_key,
             )
 
         self.image_creator_agent = Agent(

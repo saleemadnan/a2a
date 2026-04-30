@@ -7,9 +7,14 @@ requires-python = ">=3.12"
 dependencies = [
     "a2a-samples",
     "jsonschema>=4.23.0",
+    "pillow>=11.0.0",
     "pytest>=8.3.5",
+    "pytest-mock>=3.14.0",
 ]
 
 
 [tool.uv.sources]
 a2a-samples = { path = "../samples/python" }
+
+[tool.pytest.ini_options]
+pythonpath = ["../samples/python"]
